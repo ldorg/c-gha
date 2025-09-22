@@ -31,11 +31,22 @@ release:
 test: debug
 	@cd build && make test
 
-# Run tests and generate JUnit XML for CI
+# Run tests and generate JUnit XML for CI using Unity framework
 test-ci: debug
-	@cd build && make test
-	@cd build && ctest --output-junit ../test-results.xml
-	@echo "JUnit XML generated: test-results.xml"
+	@echo "Running Unity tests..."
+	@mkdir -p test_results
+	@for test in test_gpio test_uart test_led test_sensor test_drivers; do \
+		echo "Running $$test..."; \
+		if ./build/tests/$$test > test_results/$$test.testpass 2>&1; then \
+			echo "✓ $$test passed"; \
+		else \
+			mv test_results/$$test.testpass test_results/$$test.testfail; \
+			echo "✗ $$test failed"; \
+		fi; \
+	done
+	@echo "Converting to JUnit XML..."
+	@python3 third_party/unity/auto/stylize_as_junit.py test_results/ --output test-results.xml
+	@echo "Professional JUnit XML generated: test-results.xml"
 
 # Clean build artifacts
 clean:

@@ -21,6 +21,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Install Unity test dependencies
+        run: pip3 install pyparsing junit-xml
 
       - name: Cache CMake build
         uses: actions/cache@v4

@@ -47,3 +47,7 @@ build/*.cmake
 
 # Test output files
 test-results.xml
+test_results/
+*.testpass
+*.testfail
+professional_test_results.xml
