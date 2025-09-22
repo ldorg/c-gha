@@ -75,6 +75,26 @@ jobs:
           find src/ include/ tests/ -name "*.c" -o -name "*.h" | xargs clang-format --dry-run -Werror || true
         continue-on-error: true
 
+  scan:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Scan with Black Duck SCA
+        env:
+          BLACK_DUCK_TOKEN: ${{ secrets.BLACK_DUCK_TOKEN }}
+        if: ${{ env.BLACK_DUCK_TOKEN != '' }}
+        uses: cloudbees-io-gha/black-duck-scan-publish@v2
+        with:
+          server-url: ${{ vars.BLACK_DUCK_URL }}
+          api-token: ${{ secrets.BLACK_DUCK_TOKEN }}
+          project-name: c-gha
+
   build-and-deploy:
     runs-on: [self-hosted]
     needs: [test, lint]
