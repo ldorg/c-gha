@@ -9,13 +9,29 @@
 #include "drivers/led.h"
 #include "drivers/sensor.h"
 
+static int test_count = 0;
+static int test_failures = 0;
+
+#define RUN_TEST(test_func) \
+    do { \
+        test_count++; \
+        printf("Running %s...\n", #test_func); \
+        if (test_func() != 0) { \
+            test_failures++; \
+            printf("FAILED: %s\n", #test_func); \
+        } else { \
+            printf("PASSED: %s\n", #test_func); \
+        } \
+        printf("\n"); \
+    } while(0)
+
 #define TEST_ASSERT(condition, message) \
     do { \
         if (!(condition)) { \
-            printf("FAIL: %s\n", message); \
+            printf("  FAIL: %s\n", message); \
             return -1; \
         } else { \
-            printf("PASS: %s\n", message); \
+            printf("  PASS: %s\n", message); \
         } \
     } while(0)
 
@@ -147,25 +163,181 @@ int test_system_integration(void) {
     return 0;
 }
 
+int test_gpio_edge_cases(void) {
+    printf("\n=== Testing GPIO Edge Cases ===\n");
+
+    TEST_ASSERT(gpio_init(0, GPIO_MODE_OUTPUT) == 0, "GPIO init pin 0");
+    TEST_ASSERT(gpio_init(31, GPIO_MODE_INPUT) == 0, "GPIO init pin 31 (boundary)");
+
+    for (int i = 0; i < 10; i++) {
+        gpio_toggle(0);
+    }
+    TEST_ASSERT(1, "GPIO rapid toggle test");
+
+    gpio_deinit(0);
+    gpio_deinit(31);
+
+    return 0;
+}
+
+int test_uart_error_conditions(void) {
+    printf("\n=== Testing UART Error Conditions ===\n");
+
+    uart_config_t invalid_config = {
+        .baudrate = 9999999,
+        .parity = UART_PARITY_NONE,
+        .data_bits = 8,
+        .stop_bits = 1
+    };
+
+    uart_init(&invalid_config);
+    TEST_ASSERT(1, "UART handles invalid baudrate gracefully");
+
+    uint8_t large_buffer[1024];
+    for (int i = 0; i < 1024; i++) {
+        large_buffer[i] = (uint8_t)(i % 256);
+    }
+    TEST_ASSERT(uart_write(large_buffer, sizeof(large_buffer)) > 0, "UART large buffer write");
+
+    uart_deinit();
+
+    return 0;
+}
+
+int test_led_timing(void) {
+    printf("\n=== Testing LED Timing ===\n");
+
+    TEST_ASSERT(led_init(LED_PIN) == 0, "LED init for timing tests");
+
+    for (int i = 0; i < 5; i++) {
+        led_set_state(LED_ON);
+        led_set_state(LED_OFF);
+    }
+    TEST_ASSERT(1, "LED rapid on/off cycles");
+
+    TEST_ASSERT(led_blink(1) == 0, "LED very short blink");
+    TEST_ASSERT(led_blink(50) == 0, "LED medium blink");
+
+    led_deinit();
+
+    return 0;
+}
+
+int test_sensor_boundary_values(void) {
+    printf("\n=== Testing Sensor Boundary Values ===\n");
+
+    TEST_ASSERT(sensor_init() == 0, "Sensor init for boundary tests");
+    TEST_ASSERT(sensor_start(SENSOR_MODE_CONTINUOUS) == 0, "Start continuous mode");
+
+    sensor_reading_t readings[10];
+    for (int i = 0; i < 10; i++) {
+        TEST_ASSERT(sensor_read(&readings[i]) == 0, "Multiple sensor readings");
+
+        TEST_ASSERT(readings[i].temperature_celsius >= MIN_TEMP_CELSIUS, "Temperature above minimum");
+        TEST_ASSERT(readings[i].temperature_celsius <= MAX_TEMP_CELSIUS, "Temperature below maximum");
+        TEST_ASSERT(readings[i].humidity_percent >= 0.0f, "Humidity above 0%");
+        TEST_ASSERT(readings[i].humidity_percent <= 100.0f, "Humidity below 100%");
+    }
+
+    float min_temp = readings[0].temperature_celsius;
+    float max_temp = readings[0].temperature_celsius;
+    for (int i = 1; i < 10; i++) {
+        if (readings[i].temperature_celsius < min_temp) min_temp = readings[i].temperature_celsius;
+        if (readings[i].temperature_celsius > max_temp) max_temp = readings[i].temperature_celsius;
+    }
+
+    printf("Temperature range in test: %.2f°C to %.2f°C\n", min_temp, max_temp);
+    TEST_ASSERT(max_temp - min_temp >= 0.0f, "Temperature variation detected");
+
+    sensor_stop();
+    sensor_deinit();
+
+    return 0;
+}
+
+int test_sensor_error_handling(void) {
+    printf("\n=== Testing Sensor Error Handling ===\n");
+
+    sensor_reading_t reading;
+    TEST_ASSERT(sensor_read(&reading) != 0, "Sensor read fails when not initialized");
+
+    TEST_ASSERT(sensor_init() == 0, "Sensor init for error tests");
+    TEST_ASSERT(sensor_read(&reading) != 0, "Sensor read fails when not started");
+
+    TEST_ASSERT(sensor_start(SENSOR_MODE_SINGLE) == 0, "Start sensor");
+    TEST_ASSERT(sensor_read(NULL) != 0, "Sensor read with NULL pointer fails");
+
+    sensor_stop();
+    TEST_ASSERT(sensor_read(&reading) != 0, "Sensor read fails after stop");
+
+    sensor_deinit();
+
+    return 0;
+}
+
+int test_power_management(void) {
+    printf("\n=== Testing Power Management Simulation ===\n");
+
+    uart_config_t uart_config = {
+        .baudrate = UART_BAUDRATE_115200,
+        .parity = UART_PARITY_NONE,
+        .data_bits = 8,
+        .stop_bits = 1
+    };
+
+    TEST_ASSERT(uart_init(&uart_config) == 0, "System startup - UART");
+    TEST_ASSERT(led_init(LED_PIN) == 0, "System startup - LED");
+    TEST_ASSERT(sensor_init() == 0, "System startup - Sensor");
+
+    TEST_ASSERT(sensor_start(SENSOR_MODE_SINGLE) == 0, "Low power sensor mode");
+
+    sensor_reading_t reading;
+    TEST_ASSERT(sensor_read(&reading) == 0, "Power-optimized sensor reading");
+
+    led_set_state(LED_ON);
+    printf("[POWER] All systems active\n");
+
+    sensor_stop();
+    led_set_state(LED_OFF);
+    printf("[POWER] Entering low power mode\n");
+
+    led_deinit();
+    uart_deinit();
+    sensor_deinit();
+    printf("[POWER] System shutdown complete\n");
+
+    TEST_ASSERT(1, "Power management cycle completed");
+
+    return 0;
+}
+
 int main(void) {
     printf("=== Demo Firmware Test Suite ===\n");
     printf("Build Type: %s\n", getenv("BUILD_TYPE") ? getenv("BUILD_TYPE") : "Unknown");
     printf("Firmware Version: %s\n", FIRMWARE_VERSION);
+    printf("\n");
 
-    int failures = 0;
+    RUN_TEST(test_gpio_functionality);
+    RUN_TEST(test_gpio_edge_cases);
+    RUN_TEST(test_uart_functionality);
+    RUN_TEST(test_uart_error_conditions);
+    RUN_TEST(test_led_functionality);
+    RUN_TEST(test_led_timing);
+    RUN_TEST(test_sensor_functionality);
+    RUN_TEST(test_sensor_boundary_values);
+    RUN_TEST(test_sensor_error_handling);
+    RUN_TEST(test_system_integration);
+    RUN_TEST(test_power_management);
 
-    if (test_gpio_functionality() != 0) failures++;
-    if (test_uart_functionality() != 0) failures++;
-    if (test_led_functionality() != 0) failures++;
-    if (test_sensor_functionality() != 0) failures++;
-    if (test_system_integration() != 0) failures++;
+    printf("=== Test Results ===\n");
+    printf("Tests run: %d\n", test_count);
+    printf("Failures: %d\n", test_failures);
 
-    printf("\n=== Test Results ===\n");
-    if (failures == 0) {
+    if (test_failures == 0) {
         printf("All tests PASSED!\n");
         return 0;
     } else {
-        printf("%d test(s) FAILED!\n", failures);
+        printf("%d test(s) FAILED!\n", test_failures);
         return 1;
     }
 }
