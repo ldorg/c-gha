@@ -30,12 +30,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cmake-
 
-      - name: Run tests
-        run: make test
-
-      - name: Generate JUnit XML for CloudBees
-        run: ctest --test-dir build --output-junit test-results.xml
-        if: success() || failure()
+      - name: Run tests and generate JUnit XML
+        run: make test-ci
 
       - name: Generate test report
         uses: dorny/test-reporter@v1

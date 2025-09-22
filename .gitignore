@@ -44,3 +44,6 @@ build/*.cmake
 # Temporary files
 *.tmp
 *.temp
+
+# Test output files
+test-results.xml

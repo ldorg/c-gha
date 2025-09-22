@@ -1,4 +1,4 @@
-.PHONY: all debug release test clean install help
+.PHONY: all debug release test test-ci clean install help
 
 # Detect if we need to override the compiler
 # GitHub Actions and most CI environments work fine with CMake's default detection
@@ -31,6 +31,12 @@ release:
 test: debug
 	@cd build && make test
 
+# Run tests and generate JUnit XML for CI
+test-ci: debug
+	@cd build && make test
+	@cd build && ctest --output-junit ../test-results.xml
+	@echo "JUnit XML generated: test-results.xml"
+
 # Clean build artifacts
 clean:
 	@rm -rf build
@@ -50,6 +56,7 @@ help:
 	@echo "  debug    - Build debug version"
 	@echo "  release  - Build release version"
 	@echo "  test     - Run tests"
+	@echo "  test-ci  - Run tests and generate JUnit XML"
 	@echo "  run      - Build and run the application"
 	@echo "  clean    - Remove build directory"
 	@echo "  install  - Install built binaries"
