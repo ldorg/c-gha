@@ -44,9 +44,9 @@ test-ci: debug
 			echo "✗ $$test failed"; \
 		fi; \
 	done
-	@echo "Converting to JUnit XML..."
-	@python3 third_party/unity/auto/stylize_as_junit.py test_results/ --output test-results.xml
-	@echo "Professional JUnit XML generated: test-results.xml"
+	@echo "Converting to JUnit XML with timing and logs..."
+	@python3 scripts/enhanced_junit_converter.py test_results/ --output test-results.xml
+	@echo "Enhanced JUnit XML with timing and logs generated: test-results.xml"
 
 # Clean build artifacts
 clean:

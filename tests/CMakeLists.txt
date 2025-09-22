@@ -7,6 +7,9 @@ include_directories(${CMAKE_SOURCE_DIR}/third_party/unity/src)
 # Unity framework
 add_library(unity ${CMAKE_SOURCE_DIR}/third_party/unity/src/unity.c)
 
+# Enable Unity execution time tracking for JUnit timing
+target_compile_definitions(unity PUBLIC UNITY_INCLUDE_EXEC_TIME)
+
 # Common source files
 set(COMMON_SOURCES
     ${CMAKE_SOURCE_DIR}/src/hal/gpio.c
