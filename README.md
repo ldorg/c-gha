@@ -30,4 +30,3 @@ The application simulates firmware startup, runs self-diagnostics, then continuo
 - Continuously monitors sensor data and controls LED
 - Outputs realistic telemetry data
 - Handles graceful shutdown
-
