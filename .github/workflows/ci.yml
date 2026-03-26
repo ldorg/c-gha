@@ -12,7 +12,7 @@ env:
 
 jobs:
   test:
-    runs-on: [self-hosted]
+    runs-on: [ubuntu-latest]
     permissions:
       id-token: write
       contents: read
@@ -58,7 +58,7 @@ jobs:
           results-path: test-results.xml
 
   lint:
-    runs-on: [self-hosted]
+    runs-on: [ubuntu-latest]
     needs: [test]
 
     steps:
@@ -76,7 +76,7 @@ jobs:
         continue-on-error: true
 
   scan:
-    runs-on: [self-hosted]
+    runs-on: [ubuntu-latest]
     permissions:
       id-token: write
       contents: read
@@ -97,7 +97,7 @@ jobs:
           project-name: c-gha
 
   build-and-deploy:
-    runs-on: [self-hosted]
+    runs-on: [ubuntu-latest]
     needs: [test, lint, scan]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
