@@ -32,6 +32,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cmake-
 
+      - name: Install Python dependencies for test reporting
+        run: pip install junit-xml pyparsing
+
       - name: Run tests and generate JUnit XML
         run: make test-ci
 
